@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3x3 과일 카드 게임</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #fdfdfd;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #timer {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #e74c3c;
+    }
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 10px;
+    }
+
+    .card {
+      width: 100px;
+      height: 100px;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s;
+    }
+
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-front,
+    .card-back {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      backface-visibility: hidden;
+      border-radius: 8px;
+    }
+
+    .card-front {
+      background-color: #1e90ff;
+    }
+
+    .card-back {
+      transform: rotateY(180deg);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .disabled {
+      pointer-events: none;
+      filter: grayscale(1);
+    }
+
+    #game-over {
+      margin-top: 20px;
+      font-size: 28px;
+      color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <h1>3x3 과일 카드 맞추기</h1>
+  <div id="timer">⏱️ 45</div>
+  <div class="game-board" id="gameBoard"></div>
+  <div id="game-over"></div>
+
+  <script>
+    const fruitImages = [
+      'https://upload.wikimedia.org/wikipedia/commons/1/15/Red_Apple.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/8/8a/Banana-Single.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/f/fb/Grapes%2C_Napa_Valley.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/c/c4/Orange-Fruit-Pieces.jpg',
+    ];
+
+    const extraCard = 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Watermelon_cross_BNC.jpg'; // 방해 카드
+
+    // 4쌍 + 방해 카드 = 총 9장
+    let cards = [...fruitImages, ...fruitImages, extraCard];
+    cards.sort(() => 0.5 - Math.random());
+
+    const gameBoard = document.getElementById('gameBoard');
+    const timerDisplay = document.getElementById('timer');
+    const gameOverText = document.getElementById('game-over');
+
+    let firstCard = null;
+    let secondCard = null;
+    let lockBoard = false;
+    let matchedPairs = 0;
+    let timeLeft = 45;
+    let timer;
+
+    function startTimer() {
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `⏱️ ${timeLeft}`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          endGame(false);
+        }
+      }, 1000);
+    }
+
+    function endGame(won) {
+      lockBoard = true;
+      document.querySelectorAll('.card').forEach(card => card.classList.add('disabled'));
+      gameOverText.textContent = won ? '🎉 성공! 모두 맞췄어요!' : '⏰ 시간 초과! 다시 도전해보세요!';
+    }
+
+    function createCard(imageUrl) {
+      const card = document.createElement('div');
+      card.classList.add('card');
+      card.dataset.image = imageUrl;
+
+      const inner = document.createElement('div');
+      inner.classList.add('card-inner');
+
+      const front = document.createElement('div');
+      front.classList.add('card-front');
+
+      const back = document.createElement('div');
+      back.classList.add('card-back');
+      back.style.backgroundImage = `url(${imageUrl})`;
+
+      inner.appendChild(front);
+      inner.appendChild(back);
+      card.appendChild(inner);
+
+      card.addEventListener('click', () => flipCard(card));
+      return card;
+    }
+
+    function flipCard(card) {
+      if (lockBoard || card === firstCard || card.classList.contains('matched')) return;
+
+      card.classList.add('flipped');
+
+      if (!firstCard) {
+        firstCard = card;
+        return;
+      }
+
+      secondCard = card;
+      lockBoard = true;
+
+      if (firstCard.dataset.image === secondCard.dataset.image) {
+        firstCard.classList.add('matched');
+        secondCard.classList.add('matched');
+        matchedPairs++;
+        resetTurn();
+
+        // 총 4쌍이면 성공 (방해 카드 제외)
+        if (matchedPairs === 4) {
+          clearInterval(timer);
+          endGame(true);
+        }
+      } else {
+        setTimeout(() => {
+          firstCard.classList.remove('flipped');
+          secondCard.classList.remove('flipped');
+          resetTurn();
+        }, 1000);
+      }
+    }
+
+    function resetTurn() {
+      [firstCard, secondCard] = [null, null];
+      lockBoard = false;
+    }
+
+    // 게임 시작
+    cards.forEach(img => {
+      const card = createCard(img);
+      gameBoard.appendChild(card);
+    });
+
+    startTimer();
+  </script>
+</body>
+</html>
